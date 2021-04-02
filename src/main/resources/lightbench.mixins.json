@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ca.spottedleaf.lightbench.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "common.world.ChunkMapMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,4 @@
+accessWidener v1 named
+
+accessible method  net/minecraft/server/level/ServerChunkCache runDistanceManagerUpdates ()Z
+accessible field  net/minecraft/server/level/ServerChunkCache mainThreadProcessor Lnet/minecraft/server/level/ServerChunkCache$MainThreadExecutor;
