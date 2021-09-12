@@ -1,5 +1,6 @@
 package ca.spottedleaf.lightbench.mixin.client;
 
+import ca.spottedleaf.lightbench.NotAHackISwear;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,11 +23,15 @@ public class LevelRenderMixin {
         int ret = levelLightEngine.runUpdates(i, bl, bl2);
         long end = System.nanoTime();
 
+        NotAHackISwear.LIGHTENGINE_TIMER.logFrameDuration(end - start);
+
         long diff = end - start;
         double ms = diff * 1.0e-6;
 
         if (ret != 2147483647 && ret != 0) { // oops my bad, Starlight returns 0 when no update are done
-            System.out.println("Time for updates: " + ms + ", total updates (invalid on Starlight): " + (2147483647 - ret));
+            if (Boolean.getBoolean("lightbench.debugout")) {
+                System.out.println("Time for updates: " + ms + ", total updates (invalid on Starlight): " + (2147483647 - ret));
+            }
         }
         return ret;
     }

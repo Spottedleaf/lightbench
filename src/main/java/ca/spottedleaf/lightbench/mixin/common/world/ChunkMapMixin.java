@@ -2,13 +2,10 @@ package ca.spottedleaf.lightbench.mixin.common.world;
 
 import com.mojang.datafixers.DataFixer;
 import com.mojang.datafixers.util.Either;
-import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkMap;
-import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.util.Unit;
@@ -21,16 +18,15 @@ import net.minecraft.world.level.chunk.storage.ChunkStorage;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -80,15 +76,18 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
 
     private boolean run;
 
-    /**
-     * @reason cannot be bothered to type out the inject
-     * @author Spottedleaf
-     */
-    @Overwrite
-    public void tick(BooleanSupplier booleanSupplier) {
+    @Inject(
+            method = "tick(Ljava/util/function/BooleanSupplier;)V",
+            at = @At("HEAD")
+    )
+    public void tick(BooleanSupplier booleanSupplier, CallbackInfo ci) {
         // saving is for losers
         if (!this.level.dimensionType().hasSkyLight()) {
             // do not care about nether/end
+            return;
+        }
+
+        if (!Boolean.getBoolean("lightbench.gentest")) {
             return;
         }
 
@@ -200,6 +199,5 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
 
         System.out.println("Completed real test with total cpu time " + ((cpuend - cpustart) * 1.0e-6) + "ms");
         System.out.println("Time to generate " + generatedChunks + " chunks: " + ((end - start) * 1.0e-9) + "s");
-
     }
 }
