@@ -13,14 +13,14 @@ public class LevelRenderMixin {
     @Redirect(
             method = "renderLevel",
             at = @At(
-                    target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;runUpdates(IZZ)I",
+                    target = "Lnet/minecraft/world/level/lighting/LevelLightEngine;runLightUpdates()I",
                     value = "INVOKE",
                     ordinal = 0
             )
     )
-    public int timeUpdatesCall(LevelLightEngine levelLightEngine, int i, boolean bl, boolean bl2) {
+    public int timeUpdatesCall(LevelLightEngine levelLightEngine) {
         long start = System.nanoTime();
-        int ret = levelLightEngine.runUpdates(i, bl, bl2);
+        int ret = levelLightEngine.runLightUpdates();
         long end = System.nanoTime();
 
         NotAHackISwear.LIGHTENGINE_TIMER.logFrameDuration(end - start);
@@ -28,9 +28,9 @@ public class LevelRenderMixin {
         long diff = end - start;
         double ms = diff * 1.0e-6;
 
-        if (ret != 2147483647 && ret != 0) { // oops my bad, Starlight returns 0 when no update are done
+        if (ret != 0) {
             if (Boolean.getBoolean("lightbench.debugout")) {
-                System.out.println("Time for updates: " + ms + ", total updates (invalid on Starlight): " + (2147483647 - ret));
+                System.out.println("Time for updates: " + ms + ", total updates (invalid on Starlight): " + ret);
             }
         }
         return ret;

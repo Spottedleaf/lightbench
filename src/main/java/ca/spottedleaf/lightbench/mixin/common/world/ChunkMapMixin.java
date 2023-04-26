@@ -24,9 +24,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -38,7 +38,11 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
 
     @Shadow
     @Final
-    private ServerLevel level;
+    ServerLevel level;
+
+    public ChunkMapMixin(final Path path, final DataFixer dataFixer, final boolean bl) {
+        super(path, dataFixer, bl);
+    }
 
     @Shadow
     @Nullable
@@ -46,10 +50,6 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
 
     @Unique
     private Thread lightExecutor;
-
-    public ChunkMapMixin(File file, DataFixer dataFixer, boolean bl) {
-        super(file, dataFixer, bl);
-    }
 
     @Redirect(
             method = "<init>",
@@ -97,6 +97,7 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
         this.run = true;
 
         ThreadMXBean threadManagement = ManagementFactory.getThreadMXBean();
+        threadManagement.setThreadCpuTimeEnabled(true);
 
         System.out.println("Starting warmup");
 
