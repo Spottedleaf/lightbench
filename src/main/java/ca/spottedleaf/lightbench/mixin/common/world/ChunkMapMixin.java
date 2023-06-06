@@ -1,5 +1,6 @@
 package ca.spottedleaf.lightbench.mixin.common.world;
 
+import ca.spottedleaf.lightbench.util.TimedExecutor;
 import com.mojang.datafixers.DataFixer;
 import com.mojang.datafixers.util.Either;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -24,8 +25,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -49,7 +48,7 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
     protected abstract ChunkHolder getUpdatingChunkIfPresent(long l);
 
     @Unique
-    private Thread lightExecutor;
+    private TimedExecutor lightExecutor;
 
     @Redirect(
             method = "<init>",
@@ -58,20 +57,18 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
                     value = "INVOKE"
             )
     )
-    private ProcessorMailbox<Runnable> createSingleThreadedExecutor(Executor executor, String string) {
+    private ProcessorMailbox<Runnable> createSingleThreadedExecutor(final Executor executor, final String string) {
         if (!string.equalsIgnoreCase("light")) {
             return ProcessorMailbox.create(executor, string);
         }
         ExecutorService ret = Executors.newFixedThreadPool(1, (Runnable run) -> {
-            if (this.lightExecutor != null) {
-                throw new IllegalStateException();
-            }
-            Thread r = this.lightExecutor = new Thread(run);
+            Thread r = new Thread(run);
             r.setName("Light Executor");
 
             return r;
         });
-        return ProcessorMailbox.create(ret, string);
+        this.lightExecutor = new TimedExecutor(ret);
+        return ProcessorMailbox.create(this.lightExecutor, string);
     }
 
     private boolean run;
@@ -96,8 +93,6 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
         }
         this.run = true;
 
-        ThreadMXBean threadManagement = ManagementFactory.getThreadMXBean();
-        threadManagement.setThreadCpuTimeEnabled(true);
 
         System.out.println("Starting warmup");
 
@@ -105,7 +100,7 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
         int offZ = -10000;
         int radius = 50;
 
-        long cpustart = threadManagement.getThreadCpuTime(this.lightExecutor.getId());
+        long lightEngineStart = this.lightExecutor.getTotalTime();
         long start = System.nanoTime();
 
         int generatedChunks = 0;
@@ -118,10 +113,10 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
 
         // done now
 
-        long cpuend = threadManagement.getThreadCpuTime(this.lightExecutor.getId());
+        long lightEngineEnd = this.lightExecutor.getTotalTime();
         long end = System.nanoTime();
 
-        System.out.println("Completed warmup with total cpu time " + ((cpuend - cpustart) * 1.0e-6) + "ms");
+        System.out.println("Completed warmup with total cpu time " + ((lightEngineEnd - lightEngineStart) * 1.0e-6) + "ms");
         System.out.println("Time to generate " + generatedChunks + " chunks: " + ((end - start) * 1.0e-9) + "s");
 
         System.out.println("Starting real test now");
@@ -133,7 +128,7 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
         int times = (int)Math.ceil((double)targetChunks/(double)((radius * 2 + 1)*(radius * 2 + 1)));
         generatedChunks = 0;
 
-        cpustart = threadManagement.getThreadCpuTime(this.lightExecutor.getId());
+        lightEngineStart = this.lightExecutor.getTotalTime();
         start = System.nanoTime();
 
         for (int i = 0; i < times; ++i) {
@@ -195,10 +190,10 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
             offZ += (radius + 12)*2;
         }
 
-        cpuend = threadManagement.getThreadCpuTime(this.lightExecutor.getId());
+        lightEngineEnd = this.lightExecutor.getTotalTime();
         end = System.nanoTime();
 
-        System.out.println("Completed real test with total cpu time " + ((cpuend - cpustart) * 1.0e-6) + "ms");
+        System.out.println("Completed real test with total cpu time " + ((lightEngineEnd - lightEngineStart) * 1.0e-6) + "ms");
         System.out.println("Time to generate " + generatedChunks + " chunks: " + ((end - start) * 1.0e-9) + "s");
     }
 }
